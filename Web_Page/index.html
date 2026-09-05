@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Finance Reconciler</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #ffffff;
+    --hero-bg: linear-gradient(180deg, #eaf1ff 0%, #ffffff 100%);
+    --card: #ffffff;
+    --card-border: #eef0f5;
+    --accent: #2b5cff;
+    --accent-dark: #1a1a1a;
+    --text: #14151a;
+    --muted: #6b7280;
+    --success: #16a34a;
+    --success-bg: #ecfdf3;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --node-teal: #16a37e;
+    --node-blue: #2b5cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 22px 56px; position: sticky; top: 0; z-index: 10;
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--card-border);
+  }
+  nav .logo { font-weight: 800; font-size: 1.15rem; display:flex; align-items:center; gap:8px; }
+  nav .links { display: flex; gap: 32px; }
+  nav .links a { color: var(--muted); text-decoration: none; font-weight: 500; cursor: pointer; font-size: 0.95rem; }
+  nav .links a.active, nav .links a:hover { color: var(--text); }
+  .nav-btn { background: var(--accent-dark); color:white; padding:10px 20px; border-radius:8px; font-weight:600; font-size:0.9rem; cursor:pointer; }
+
+  .page { display: none; animation: fadeIn 0.5s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from {opacity:0; transform: translateY(10px);} to {opacity:1; transform: translateY(0);} }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 48px; }
+
+  .hero { background: var(--hero-bg); padding: 70px 0 50px; text-align:center; }
+  .hero h1 { font-size: 3.4rem; font-weight: 800; margin: 0 0 18px; letter-spacing: -1px; }
+  .hero p { color: var(--muted); font-size: 1.15rem; max-width: 640px; margin: 0 auto 34px; line-height:1.6; }
+  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn { padding: 14px 28px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; font-size: 1rem; transition: transform 0.2s, box-shadow 0.2s; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(43,92,255,0.3); }
+  .btn-secondary { background: white; color: var(--text); border: 1.5px solid var(--card-border); }
+  .btn-secondary:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+  .section { padding: 56px 0; }
+  .section-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+  .section-sub { color: var(--muted); margin-bottom: 30px; font-size: 1rem; }
+
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 800px) { .grid4, .grid2 { grid-template-columns: 1fr; } .hero h1 { font-size: 2.2rem; } }
+
+  .card { background: var(--card); border-radius: 16px; padding: 26px; border: 1.5px solid var(--card-border); transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s; }
+  .card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 12px 30px rgba(0,0,0,0.06); }
+  .card .num { font-size: 2.1rem; font-weight: 800; margin-top: 6px; }
+  .card .label { color: var(--muted); font-size: 0.88rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+
+  .legend-item { display:flex; gap:10px; align-items:center; margin-bottom: 10px; color: var(--muted); font-size: 0.92rem; }
+  .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .bars { display: flex; align-items: flex-end; gap: 20px; height: 200px; margin-top: 24px; }
+  .bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .bar { width: 100%; border-radius: 8px 8px 0 0; transition: height 1s ease; }
+  .bar-label { color: var(--muted); font-size: 0.8rem; text-align:center; }
+
+  .slider-row { display: flex; align-items: center; gap: 16px; margin: 18px 0; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { text-align: left; padding: 13px 10px; border-bottom: 1px solid var(--card-border); font-size: 0.9rem; }
+  th { color: var(--muted); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; }
+  .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
+  .badge-ok { background: var(--success-bg); color: var(--success); }
+  .badge-bad { background: var(--danger-bg); color: var(--danger); }
+
+  .loading { text-align:center; padding: 50px; color: var(--muted); }
+  .spinner { width: 34px; height: 34px; border-radius: 50%; border: 4px solid var(--card-border); border-top-color: var(--accent); animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer { text-align:center; color: var(--muted); padding: 40px; font-size: 0.85rem; border-top: 1px solid var(--card-border); }
+  .highlight { color: var(--accent); font-weight: 700; }
+
+  /* ---------- Workflow Diagram ---------- */
+  .workflow { display: flex; flex-direction: column; align-items: center; gap: 0; margin-top: 20px; }
+  .wf-row { display: flex; align-items: center; justify-content: center; gap: 40px; flex-wrap: wrap; }
+  .wf-node {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: 140px; text-align: center;
+  }
+  .wf-circle {
+    width: 76px; height: 76px; border-radius: 50%; display:flex; align-items:center; justify-content:center;
+    font-size: 1.7rem; border: 6px solid;
+  }
+  .wf-circle.teal { border-color: var(--node-teal); background: #ecfdf5; }
+  .wf-circle.blue { border-color: var(--node-blue); background: #eef2ff; }
+  .wf-label { font-weight: 700; font-size: 0.88rem; }
+  .wf-sub { color: var(--muted); font-size: 0.75rem; }
+  .wf-arrow-down { color: var(--card-border); font-size: 1.8rem; margin: 4px 0; }
+  .wf-arrow-down::after { content: "↓"; color: var(--accent); }
+
+  /* ---------- Chat ---------- */
+  .chat-box {
+    border: 1.5px solid var(--card-border); border-radius: 16px; overflow: hidden;
+    display: flex; flex-direction: column; height: 480px; background: #fafbfe;
+  }
+  .chat-header { padding: 16px 20px; background: white; border-bottom: 1px solid var(--card-border); font-weight: 700; display:flex; align-items:center; gap:10px; }
+  .chat-dot { width:8px; height:8px; border-radius:50%; background: var(--success); }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: 0.92rem; line-height: 1.5; }
+  .msg.bot { background: white; border: 1px solid var(--card-border); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg.user { background: var(--accent); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .chat-input-row { display: flex; gap: 10px; padding: 14px; background: white; border-top: 1px solid var(--card-border); }
+  .chat-input-row input {
+    flex: 1; padding: 12px 16px; border-radius: 10px; border: 1.5px solid var(--card-border);
+    font-size: 0.92rem; outline: none;
+  }
+  .chat-input-row input:focus { border-color: var(--accent); }
+  .chat-send { background: var(--accent); color: white; border: none; border-radius: 10px; padding: 0 20px; cursor: pointer; font-weight: 600; }
+  .typing { display:flex; gap:4px; padding: 4px 0; }
+  .typing span { width:6px; height:6px; border-radius:50%; background: var(--muted); animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+  .suggested { display:flex; gap:8px; flex-wrap:wrap; padding: 0 20px 14px; }
+  .suggested span { background: white; border: 1px solid var(--card-border); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor:pointer; color: var(--muted); }
+  .suggested span:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Live AI Console ---------- */
+  .console-box { background: #0d1117; border-radius: 14px; overflow: hidden; margin-top: 24px; border: 1px solid #22272e; }
+  .console-header { background: #161b22; padding: 12px 18px; color: #8b949e; font-weight: 700; font-size: 0.85rem; border-bottom: 1px solid #22272e; }
+  .console-body { padding: 18px; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.85rem; line-height: 1.9; max-height: 340px; overflow-y: auto; }
+  .c-line { color: #c9d1d9; opacity: 0; animation: revealLine 0.3s forwards; }
+  @keyframes revealLine { to { opacity: 1; } }
+  .c-scan { color: #58a6ff; }
+  .c-arrow { color: #8b949e; padding-left: 18px; }
+  .c-ok { color: #3fb950; font-weight: 700; }
+  .c-bad { color: #f85149; font-weight: 700; }
+
+  /* ---------- Tooltip ---------- */
+  .tooltip-wrap { position: relative; }
+  .chart-tooltip {
+    position: absolute; background: #1a1a1a; color: white; padding: 6px 12px;
+    border-radius: 8px; font-size: 0.78rem; font-weight: 600; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s; white-space: nowrap; z-index: 20;
+    transform: translate(-50%, -110%);
+  }
+  .bar-wrap { cursor: pointer; }
+  .bar:hover { filter: brightness(1.15); }
+  #pie-chart path { cursor: pointer; transition: opacity 0.15s; }
+  #pie-chart path:hover { opacity: 0.75; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">💰 AI Finance Reconciler</div>
+  <div class="links">
+    <a data-page="home" class="active">Home</a>
+    <a data-page="dashboard">Dashboard</a>
+    <a data-page="agent">AI Agent</a>
+  </div>
+  <div class="nav-btn" onclick="goTo('dashboard')">Get Started</div>
+</nav>
+
+<!-- ================= HOME PAGE ================= -->
+<div class="page active" id="home">
+  <div class="hero">
+    <div class="container">
+      <h1>Reconciliation,<br>Solved by AI.</h1>
+      <p>An AI agent that checks whether your bank records and Razorpay settlement records agree —
+         and explains every mismatch in plain English.</p>
+      <div class="cta-row">
+        <button class="btn btn-primary" onclick="goTo('dashboard')">Open Dashboard</button>
+        <button class="btn btn-secondary" onclick="goTo('agent')">Use Agent</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container section">
+    <div class="section-title">The problem hiding in every finance team's spreadsheet</div>
+    <div class="card" style="line-height:1.8; color:var(--muted); font-size:1.05rem;">
+      Every transaction your business processes creates <b style="color:var(--text)">two separate stories</b> —
+      one told by your bank, another told by Razorpay. Fees get deducted. GST gets applied. Refunds go out.
+      Reference numbers get mistyped. One by one, these small gaps pile up into hours of manual Excel work
+      every single month — work that's tedious, error-prone, and easy to get wrong under deadline pressure.
+      <br><br>
+      <span class="highlight">This AI agent does that work in seconds — and instead of just flagging a mismatch,
+      it tells you exactly why it happened, with a confidence score you can trust.</span>
+    </div>
+  </div>
+
+  <div class="container section" style="padding-top:0">
+    <div class="section-title">How this AI Agent works</div>
+    <div class="section-sub">A visual walkthrough of the pipeline, from raw records to explained results.</div>
+
+    <div class="workflow">
+      <div class="wf-row">
+        <div class="wf-node">
+          <div class="wf-circle teal">🏦</div>
+          <div class="wf-label">Bank Statement</div>
+          <div class="wf-sub">CSV input</div>
+        </div>
+        <div class="wf-node">
+          <div class="wf-circle teal">💳</div>
+          <div class="wf-label">Razorpay Settlement</div>
+          <div class="wf-sub">CSV input</div>
+        </div>
+      </div>
+      <div class="wf-arrow-down"></div>
+      <div class="wf-row">
+        <div class="wf-node" style="width:180px">
+          <div class="wf-circle blue">⚙️</div>
+          <div class="wf-label">Rule Engine</div>
+          <div class="wf-sub">Matches amount, date & reference instantly — free, no AI</div>
+        </div>
+      </div>
+      <div class="wf-arrow-down"></div>
+      <div class="wf-row">
+        <div class="wf-node">
+          <div class="wf-circle teal">✅</div>
+          <div class="wf-label">Matched</div>
+          <div class="wf-sub">Clean / fee / GST / refund</div>
+        </div>
+        <div class="wf-node">
+          <div class="wf-circle blue">❓</div>
+          <div class="wf-label">Unmatched</div>
+          <div class="wf-sub">Sent to AI Agent</div>
+        </div>
+      </div>
+      <div class="wf-arrow-down"></div>
+      <div class="wf-row">
+        <div class="wf-node" style="width:200px">
+          <div class="wf-circle blue">🧠</div>
+          <div class="wf-label">AI Reasoning</div>
+          <div class="wf-sub">Checks nearby records for typos, delays, genuine gaps</div>
+        </div>
+      </div>
+      <div class="wf-arrow-down"></div>
+      <div class="wf-row">
+        <div class="wf-node" style="width:220px">
+          <div class="wf-circle teal">📋</div>
+          <div class="wf-label">Explained Report</div>
+          <div class="wf-sub">Every result + reason + confidence score</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DASHBOARD PAGE ================= -->
+<div class="page" id="dashboard">
+  <div class="container section">
+    <div class="section-title"> Automatic Reconciliation</div>
+    <div class="section-sub">The agent first matches records using plain logic — instant and free, no AI needed.</div>
+
+    <div id="dashboard-loading" class="loading"><div class="spinner"></div>Loading reconciliation data...</div>
+
+    <div id="dashboard-content" style="display:none">
+      <div class="grid4">
+        <div class="card"><div class="label">Total Transactions</div><div class="num" id="s-total">-</div></div>
+        <div class="card"><div class="label">Auto-Matched</div><div class="num" id="s-rate">-</div></div>
+        <div class="card"><div class="label">Perfectly Clean</div><div class="num" id="s-clean">-</div></div>
+        <div class="card"><div class="label">Needs AI Review</div><div class="num" id="s-unmatched">-</div></div>
+      </div>
+
+      <div class="section-title" style="font-size:1.3rem; margin-top:44px;"> Full Reconciliation Analytics</div>
+      <div class="section-sub">All the key visuals in one place — what matched, why, and how it trended over time</div>
+
+      <div class="grid2">
+        <div class="card">
+          <div style="font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+            Share of Each Category
+            <span style="background:var(--success-bg); color:var(--success); font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">● LIVE</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+            <svg id="pie-chart" width="150" height="150" viewBox="0 0 180 180"></svg>
+            <div id="pie-legend" style="font-size:0.85rem;"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:700; margin-bottom:16px;"> Category Counts</div>
+          <div class="bars" id="bars"></div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:700; margin-bottom:6px;"> Matched vs Unmatched Over Time</div>
+          <div style="color:var(--muted); font-size:0.82rem; margin-bottom:12px;">Monthly trend</div>
+          <svg id="line-chart" width="100%" height="180" viewBox="0 0 800 220" preserveAspectRatio="none"></svg>
+          <div style="display:flex; gap:20px; margin-top:10px; font-size:0.8rem; color:var(--muted)">
+            <div><span class="dot" style="background:#16a34a; display:inline-block;"></span> Matched</div>
+            <div><span class="dot" style="background:#dc2626; display:inline-block;"></span> Unmatched</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:700; margin-bottom:6px;"> Detailed Category Table</div>
+          <div style="color:var(--muted); font-size:0.82rem; margin-bottom:8px;">Exact numbers behind every chart</div>
+          <table id="summary-table"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= AI AGENT PAGE ================= -->
+<div class="page" id="agent">
+  <div class="container section">
+    <div class="section-title">AI Agent — Exception Resolver & Chat</div>
+    <div class="section-sub">Run the agent on unresolved transactions, or ask it anything about the reconciliation.</div>
+
+    <div class="card">
+      <div class="slider-row">
+        <label style="font-weight:600; font-size:0.92rem;">Transactions to analyze:</label>
+        <input type="range" id="maxCalls" min="5" max="100" value="20">
+        <span id="maxCallsLabel" style="font-weight:700;">20</span>
+      </div>
+      <div style="color:var(--muted); font-size:0.8rem; margin:-8px 0 14px;" id="sliderMaxLabel"></div>
+      <button class="btn btn-primary" onclick="runAgent()">Run AI Agent</button>
+    </div>
+
+    <div id="agent-loading" class="loading" style="display:none"><div class="spinner"></div>AI Agent is analyzing transactions...</div>
+
+    <div id="live-console" class="console-box" style="display:none">
+      <div class="console-header">🖥️ AI Agent — Live Reasoning</div>
+      <div class="console-body" id="console-body"></div>
+    </div>
+
+    <div id="agent-result"></div>
+
+    <div class="section-title" style="font-size:1.3rem; margin-top:48px;">💬 Chat with the Agent</div>
+    <div class="section-sub">Ask questions like "how many transactions matched?" or "what's the biggest issue this month?"</div>
+
+    <div class="chat-box">
+      <div class="chat-header"><span class="chat-dot"></span> AI Finance Assistant</div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="msg bot">Hi! I can answer questions about your reconciliation report — match rate, exceptions, fees, refunds, anything. Try asking me something.</div>
+      </div>
+      <div class="suggested">
+        <span onclick="askSuggested('What is the current match rate?')">Match rate?</span>
+        <span onclick="askSuggested('How many transactions are unmatched?')">Unmatched count?</span>
+        <span onclick="askSuggested('How many refunds happened?')">Refunds?</span>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Start chat about your reconciliation data..." onkeydown="if(event.key==='Enter') sendChat()">
+        <button class="chat-send" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer></footer>
+
+<script>
+const API = "http://localhost:5000";
+
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.links a').forEach(a => a.classList.remove('active'));
+  document.getElementById(page).classList.add('active');
+  document.querySelector(`.links a[data-page="${page}"]`).classList.add('active');
+  window.location.hash = page;
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'agent') setAgentSliderMax();
+}
+document.querySelectorAll('.links a').forEach(a => a.addEventListener('click', () => goTo(a.dataset.page)));
+window.addEventListener('load', () => goTo(window.location.hash.replace('#', '') || 'home'));
+
+async function setAgentSliderMax() {
+  try {
+    const res = await fetch(`${API}/api/summary`);
+    const data = await res.json();
+    const slider = document.getElementById('maxCalls');
+    slider.max = data.unmatched_bank;
+    document.getElementById('sliderMaxLabel').innerText = `(up to ${data.unmatched_bank} — all unmatched transactions)`;
+  } catch (e) { /* keep default max if backend not reachable yet */ }
+}
+
+let dashboardLoaded = false;
+async function loadDashboard() {
+  if (dashboardLoaded) return;
+  try {
+    const res = await fetch(`${API}/api/summary`);
+    const data = await res.json();
+    document.getElementById('s-total').innerText = data.total_bank_rows;
+    document.getElementById('s-rate').innerText = data.match_rate_pct + '%';
+    document.getElementById('s-clean').innerText = data.clean_matches;
+    document.getElementById('s-unmatched').innerText = data.unmatched_bank;
+
+    const cats = [
+      {label: 'Clean', val: data.clean_matches, color: '#16a34a'},
+      {label: 'Fee', val: data.fee_explained, color: '#2b5cff'},
+      {label: 'GST', val: data.gst_explained, color: '#f59e0b'},
+      {label: 'Refund', val: data.refund_pairs, color: '#38bdf8'},
+      {label: 'Unmatched', val: data.unmatched_bank, color: '#dc2626'},
+    ];
+
+    // Bar chart
+    updateBars(cats);
+
+    // Pie chart (conic gradient via SVG arcs)
+    drawPieChart(cats, data.total_bank_rows);
+
+    // Table
+    const totalForPct = data.total_bank_rows || 1;
+    document.getElementById('summary-table').innerHTML = `
+      <tr><th>Category</th><th>Count</th><th>% of Total</th></tr>
+      ${cats.map(c => `<tr><td><span class="dot" style="background:${c.color}; display:inline-block; margin-right:8px;"></span>${c.label}</td><td>${c.val}</td><td>${(c.val/totalForPct*100).toFixed(1)}%</td></tr>`).join('')}
+    `;
+
+    document.getElementById('dashboard-loading').style.display = 'none';
+    document.getElementById('dashboard-content').style.display = 'block';
+    dashboardLoaded = true;
+
+    loadTimeline();
+  } catch (e) {
+    document.getElementById('dashboard-loading').innerHTML = '⚠️ Could not reach backend. Is backend.py running on port 5000?';
+  }
+}
+
+// Auto-refresh every 10s to keep dashboard "live" if underlying CSV data changes
+setInterval(() => { if (dashboardLoaded) refreshDashboardData(); }, 10000);
+
+async function refreshDashboardData() {
+  try {
+    const res = await fetch(`${API}/api/summary`);
+    const data = await res.json();
+    document.getElementById('s-total').innerText = data.total_bank_rows;
+    document.getElementById('s-rate').innerText = data.match_rate_pct + '%';
+    document.getElementById('s-clean').innerText = data.clean_matches;
+    document.getElementById('s-unmatched').innerText = data.unmatched_bank;
+    const cats = [
+      {label: 'Clean', val: data.clean_matches, color: '#16a34a'},
+      {label: 'Fee', val: data.fee_explained, color: '#2b5cff'},
+      {label: 'GST', val: data.gst_explained, color: '#f59e0b'},
+      {label: 'Refund', val: data.refund_pairs, color: '#38bdf8'},
+      {label: 'Unmatched', val: data.unmatched_bank, color: '#dc2626'},
+    ];
+    updateBars(cats);
+    drawPieChart(cats, data.total_bank_rows);
+  } catch (e) { /* silent - keep last known good data on screen */ }
+}
+
+function updateBars(cats) {
+  const max = Math.max(...cats.map(c => c.val));
+  document.getElementById('bars').innerHTML = cats.map(c => `
+    <div class="bar-wrap">
+      <div class="bar" title="${c.label}: ${c.val} transactions" style="height:${(c.val/max*160)}px; background:${c.color};"></div>
+      <div class="bar-label">${c.label}<br><b style="color:var(--text)">${c.val}</b></div>
+    </div>`).join('');
+}
+
+function drawPieChart(cats, total) {
+  const svg = document.getElementById('pie-chart');
+  const cx = 90, cy = 90, r = 80;
+  let startAngle = 0;
+  let paths = '';
+  cats.forEach(c => {
+    const frac = total ? c.val / total : 0;
+    const angle = frac * 360;
+    const endAngle = startAngle + angle;
+    const x1 = cx + r * Math.cos((Math.PI * startAngle) / 180);
+    const y1 = cy + r * Math.sin((Math.PI * startAngle) / 180);
+    const x2 = cx + r * Math.cos((Math.PI * endAngle) / 180);
+    const y2 = cy + r * Math.sin((Math.PI * endAngle) / 180);
+    const largeArc = angle > 180 ? 1 : 0;
+    if (frac > 0) {
+      paths += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} Z" fill="${c.color}" style="cursor:pointer;"><title>${c.label}: ${c.val} transactions (${total ? (c.val/total*100).toFixed(1) : 0}%)</title></path>`;
+    }
+    startAngle = endAngle;
+  });
+  svg.innerHTML = paths + `<circle cx="${cx}" cy="${cy}" r="42" fill="white"></circle><text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="20" font-weight="800" fill="#14151a">${total}</text><text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="9" fill="#6b7280">total</text>`;
+
+  document.getElementById('pie-legend').innerHTML = cats.map(c => `
+    <div class="legend-item"><span class="dot" style="background:${c.color}"></span>${c.label} — ${c.val} (${total ? (c.val/total*100).toFixed(1) : 0}%)</div>
+  `).join('');
+}
+
+async function loadTimeline() {
+  try {
+    const res = await fetch(`${API}/api/timeline`);
+    const data = await res.json();
+    drawLineChart(data.months, data.matched, data.unmatched);
+  } catch (e) { /* timeline is optional, ignore silently */ }
+}
+
+function drawLineChart(months, matched, unmatched) {
+  const svg = document.getElementById('line-chart');
+  if (!months.length) { svg.innerHTML = ''; return; }
+  const w = 800, h = 220, pad = 30;
+  const maxVal = Math.max(...matched, ...unmatched, 1);
+  const stepX = (w - pad * 2) / Math.max(months.length - 1, 1);
+
+  function toPoints(arr) {
+    return arr.map((v, i) => {
+      const x = pad + i * stepX;
+      const y = h - pad - (v / maxVal) * (h - pad * 2);
+      return `${x},${y}`;
+    }).join(' ');
+  }
+
+  function toDots(arr, color) {
+    return arr.map((v, i) => {
+      const x = pad + i * stepX;
+      const y = h - pad - (v / maxVal) * (h - pad * 2);
+      return `<circle cx="${x}" cy="${y}" r="4" fill="${color}" style="cursor:pointer;"><title>${months[i]}: ${v} transactions</title></circle>`;
+    }).join('');
+  }
+
+  const labels = months.map((m, i) => {
+    const x = pad + i * stepX;
+    return `<text x="${x}" y="${h-6}" font-size="10" fill="#9aa4bd" text-anchor="middle">${m}</text>`;
+  }).join('');
+
+  svg.innerHTML = `
+    <polyline points="${toPoints(matched)}" fill="none" stroke="#16a34a" stroke-width="3"/>
+    <polyline points="${toPoints(unmatched)}" fill="none" stroke="#dc2626" stroke-width="3"/>
+    ${toDots(matched, '#16a34a')}
+    ${toDots(unmatched, '#dc2626')}
+    ${labels}
+  `;
+}
+
+document.getElementById('maxCalls').addEventListener('input', (e) => {
+  document.getElementById('maxCallsLabel').innerText = e.target.value;
+});
+
+async function runAgent() {
+  const maxCalls = document.getElementById('maxCalls').value;
+  document.getElementById('agent-loading').style.display = 'block';
+  document.getElementById('agent-result').innerHTML = '';
+  document.getElementById('live-console').style.display = 'none';
+  document.getElementById('console-body').innerHTML = '';
+  try {
+    const res = await fetch(`${API}/api/analyze`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({max_calls: parseInt(maxCalls)})
+    });
+    const data = await res.json();
+    document.getElementById('agent-loading').style.display = 'none';
+    document.getElementById('live-console').style.display = 'block';
+
+    await streamConsole(data.rows);
+
+    let rowsHtml = data.rows.map(r => `
+      <tr>
+        <td>${r.reference}</td><td>₹${r.amount}</td><td>${r.date}</td>
+        <td>${r.match_found ? '<span class="badge badge-ok">Explained</span>' : '<span class="badge badge-bad">Unexplained</span>'}</td>
+        <td>${r.matched_order_id || '—'}</td><td>${r.confidence}%</td>
+        <td style="color:var(--muted)">${r.reason}</td>
+      </tr>`).join('');
+
+    const resolved = data.rows.filter(r => r.match_found).length;
+    const unresolved = data.rows.length - resolved;
+    const avgConf = data.rows.length ? Math.round(data.rows.reduce((s,r)=>s+r.confidence,0)/data.rows.length) : 0;
+
+    document.getElementById('agent-result').innerHTML = `
+      <div class="card" style="margin-top:24px; border-left:3px solid var(--success)">
+        AI Agent analyzed <b>${data.analyzed_count}</b> transactions and resolved <b>${data.resolved_count}</b> of them.
+      </div>
+
+      <div class="grid2" style="margin-top:20px;">
+        <div class="card">
+          <div style="font-weight:700; margin-bottom:14px;"> Batch — Explained vs Unexplained</div>
+          <div class="bars" style="height:140px;">
+            <div class="bar-wrap">
+              <div class="bar" title="Explained: ${resolved}" style="height:${resolved ? (resolved/data.rows.length*120) : 2}px; background:#16a34a;"></div>
+              <div class="bar-label">Explained<br><b style="color:var(--text)">${resolved}</b></div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar" title="Unexplained: ${unresolved}" style="height:${unresolved ? (unresolved/data.rows.length*120) : 2}px; background:#dc2626;"></div>
+              <div class="bar-label">Unexplained<br><b style="color:var(--text)">${unresolved}</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700; margin-bottom:14px;"> Average AI Confidence</div>
+          <div style="text-align:center; padding:20px 0;">
+            <div style="font-size:2.4rem; font-weight:800; color:${avgConf>=70?'#16a34a':avgConf>=40?'#f59e0b':'#dc2626'}">${avgConf}%</div>
+            <div style="color:var(--muted); font-size:0.85rem; margin-top:6px;">across ${data.rows.length} analyzed transactions</div>
+          </div>
+        </div>
+      </div>
+
+      <table style="margin-top:24px;"><tr><th>Reference</th><th>Amount</th><th>Date</th><th>Verdict</th><th>Matched ID</th><th>Confidence</th><th>Reason</th></tr>${rowsHtml}</table>`;
+  } catch (e) {
+    document.getElementById('agent-loading').style.display = 'none';
+    document.getElementById('agent-result').innerHTML = '⚠️ Could not reach backend.';
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function streamConsole(rows) {
+  const body = document.getElementById('console-body');
+  const shown = rows.slice(0, 15); // keep console readable even for large batches
+  for (const r of shown) {
+    await addLine(body, `<span class="c-scan">🔍 Analyzing transaction ${r.reference}...</span>`);
+    await sleep(150);
+    if (r.matched_order_id) {
+      await addLine(body, `<span class="c-arrow">→ Found candidate: ${r.matched_order_id}</span>`);
+      await sleep(120);
+      await addLine(body, `<span class="c-arrow">→ ${r.reason}</span>`);
+    } else {
+      await addLine(body, `<span class="c-arrow">→ No close candidate found in same-date records</span>`);
+    }
+    await sleep(120);
+    if (r.match_found) {
+      await addLine(body, `<span class="c-ok">✅ Verdict: MATCH FOUND (${r.confidence}% confidence)</span>`);
+    } else {
+      await addLine(body, `<span class="c-bad">❌ Verdict: Genuinely unexplained — flagged for human review</span>`);
+    }
+    await addLine(body, `<div style="height:8px"></div>`);
+    await sleep(200);
+  }
+  if (rows.length > shown.length) {
+    await addLine(body, `<span class="c-arrow">... and ${rows.length - shown.length} more transactions processed (see full table below)</span>`);
+  }
+}
+
+async function addLine(container, html) {
+  const div = document.createElement('div');
+  div.className = 'c-line';
+  div.innerHTML = html;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  await sleep(30);
+}
+
+function askSuggested(q) {
+  document.getElementById('chat-input').value = q;
+  sendChat();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const question = input.value.trim();
+  if (!question) return;
+  const messages = document.getElementById('chat-messages');
+
+  messages.innerHTML += `<div class="msg user">${question}</div>`;
+  input.value = '';
+  messages.scrollTop = messages.scrollHeight;
+
+  const typingId = 'typing-' + Date.now();
+  messages.innerHTML += `<div class="msg bot" id="${typingId}"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    const res = await fetch(`${API}/api/chat`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question})
+    });
+    const data = await res.json();
+    document.getElementById(typingId).innerText = data.answer;
+  } catch (e) {
+    document.getElementById(typingId).innerText = "⚠️ Could not reach backend.";
+  }
+  messages.scrollTop = messages.scrollHeight;
+}
+</script>
+</body>
+</html>
