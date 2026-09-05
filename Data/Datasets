@@ -1,5 +1,0 @@
-= await res.json();
-    document.getElementById('s-total').innerText = data.total_bank_rows;
-    document.getElementById('s-rate').innerText = data.match_rate_pct + '%';
-    document.getElementById('s-clean').innerText = data.clean_matches;
-    document.getElementById('s-unmatched').innerText = data.unmatched_bank;
